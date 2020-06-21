@@ -1,7 +1,6 @@
 <?php
 
 define('DB_NAME', 'porthu');
-define('DB_PATH', realpath("..") . "/database/" . DB_NAME . ".sqlite3");
 
 /**
  * Wrapper class for operations regarding SQLite.
@@ -16,14 +15,21 @@ class DatabaseHandler
    /**
     * Class contructor. Initializes the connection object. 
     */
-   public function __construct()
+   public function __construct(string $dbPath)
    {
-      $this->_db = new SQLite3(DB_PATH);
+      $this->_db = new SQLite3($dbPath);
 
       if(!$this->_db) {
          echo $this->_db->lastErrorMsg();
       } else {
          echo "Opened database successfully\n";
+
+         // debug: list tables
+         /*
+         while($row = $this->_exec("SELECT name FROM sqlite_master WHERE type='table';")->fetchArray(SQLITE3_ASSOC)) {
+            var_dump($row);
+         }
+         */
       }
    }
 
@@ -57,6 +63,46 @@ class DatabaseHandler
    {
       return $this->_getRecords("channel");
    }
+
+   /**
+    * Returns an indexed array of age restriction options. 
+    *
+    * @return array
+    */
+   public function getAgeRestrictions(): array
+   {
+      return $this->_getRecords("age_restriction");
+   }
+
+   /**
+    * Adds a channel to the database.
+    *
+    * @param array $channel
+    * @return SQLite3Result|false
+    */
+   public function addChannel(array $channel)
+   {
+      $channelName = $channel['name'];
+
+      echo "INSERT INTO channel (name) VALUES ('${channelName}');";
+      return $this->_exec("INSERT INTO channel (name) VALUES ('${channelName}');");
+   }
+
+   /**
+    * Adds an age restriction rule to the database.
+    *
+    * @param array $ageRestriction
+    * @return SQLite3Result|false
+    */
+    public function addAgeRestriction(array $ageRestriction)
+    {
+      $name = $ageRestriction['name'] ?? null;
+      $limit = $ageRestriction['limit'] ?? null;
+      $icon  = $ageRestriction['icon'] ?? null;
+
+      return $this->_exec("INSERT INTO age_restriction ('name', 'limit', 'icon') "
+                        . "VALUES ('${name}', '${limit}', '${icon}');");
+    }
 
    /**
     * Wrapper for getting table records.

@@ -2,7 +2,8 @@
     <?php
         require realpath('..') . '/app/database.php';
 
-        $dbHandler = new DatabaseHandler();
+        $sqlitePath = realpath("..") . "/database/" .DB_NAME. ".sqlite3";
+        $dbHandler = new DatabaseHandler($sqlitePath);
 
         $channelList = $dbHandler->getChannels();
         $dayList = $dbHandler->getAvailableDays();
