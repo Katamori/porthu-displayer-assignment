@@ -3,8 +3,12 @@
 require realpath('.') . '/app/functions.php';
 require realpath('.') . '/app/database.php';
 
-// todo: make it a parameter
+// parameter handling
 $queryDate = "2020-06-20";
+
+if (isset($argv[1]) && $argv[1] === "--date" && isset($argv[2])) {
+    $queryDate = $argv[2];
+}
 
 // build API url
 $apiUrl = generateQueryURL($queryDate);
@@ -20,10 +24,13 @@ if (!($jsonResponse = json_decode($curlResponse, true))) {
     exit;
 }
 
-$programs = [];
-
 // initialize and use database handler
 $dbHandler = new DatabaseHandler(realpath(".") . "/database/" .DB_NAME. ".sqlite3");
+
+if (in_array($queryDate, $dbHandler->getAvailableDays())) {
+    echo "You've already fetched ${queryDate}!\n";
+    exit;
+}
 
 $existingChannels = $dbHandler->getChannels();
 $existingAgeResctrictions = $dbHandler->getAgeRestrictions();
@@ -73,6 +80,17 @@ echo "Processing programs...\n";
 
 foreach ($jsonResponse['channels'] as $channel) {
     foreach ($channel['programs'] as $program) {
+
+        // date check
+        $startDateTime = date('Y-m-d h:i:s', strtotime($program['start_datetime']));
+        $dateMin = date('Y-m-d h:i:s', strtotime($queryDate . 'T00:00:00+01:00'));
+        $dateMax = date('Y-m-d h:i:s', strtotime($queryDate . 'T23:59:59+01:00'));
+
+        if (!(($startDateTime > $dateMin) && ($startDateTime < $dateMax))) {
+            echo "[OUT OF DATE RANGE] " . $dateMin ." < " . $startDateTime . " < ". $dateMax ."\n";
+            continue;
+        }
+
         $channelId = null;
 
         if (is_numeric($existingKey = arrayMultiSearch($channel['name'], $existingChannels, 'name'))) {
@@ -97,7 +115,6 @@ foreach ($jsonResponse['channels'] as $channel) {
 
         $t = $program['title'];
         echo "[" . ($isAdded ? "SUCCESS" : "FAILED") . "] Add program: ${t} \n";
-
     }
 }
 

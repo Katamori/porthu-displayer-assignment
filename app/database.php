@@ -22,7 +22,7 @@ class DatabaseHandler
       if(!$this->_db) {
          echo $this->_db->lastErrorMsg();
       } else {
-         echo "Opened database successfully\n";
+         //echo "[DEBUG] Opened database successfully\n";
 
          // debug: list tables
          /*
@@ -45,13 +45,42 @@ class DatabaseHandler
    }
 
    /**
+    * Wrapper for a special SELECT query that can be user directly on the frontend. 
+    *
+    * @param int $channelId
+    * @param string $date
+    * @return array
+    */
+   public function getViewForChannel(int $channelId, string $date = "2020-06-20"): array
+   {
+      $source = $this->_exec(
+         "SELECT p.title, p.short_description, date(p.start_datetime) as date, time(p.start_datetime) as time, a.name as restriction " .
+         "FROM program p LEFT JOIN age_restriction a ON p.age_restriction = a.id " .
+         "WHERE p.channel = ${channelId} AND date BETWEEN '${date}' AND '${date}';");
+
+      return $this->_asArray($source);
+   }
+
+   /**
     * Returns an indexed array of available days. 
     *
     * @return array
     */
    public function getAvailableDays(): array
    {
-      return $this->_getRecords("program", "start_datetime");
+      $source = $this->_getRecords("program", "start_datetime");
+
+      $source = array_column($source, "start_datetime");
+
+      $source = array_map(function ($d) {
+         return explode("T", $d)[0];
+      }, $source);
+
+      $source = array_unique($source);
+
+      asort($source);
+
+      return $source;
    }
 
    /**
@@ -134,13 +163,7 @@ class DatabaseHandler
          return [];
       }
 
-      $resultArray = [];
-
-      while($row = $queryResponse->fetchArray(SQLITE3_ASSOC)) {
-         $resultArray[] = $row;
-      }
-
-      return $resultArray;
+      return $this->_asArray($queryResponse);
    }
 
    /**
@@ -166,5 +189,22 @@ class DatabaseHandler
    protected function _handleErrors(): bool
    {
       return (bool)$this->_db;
+   }
+
+   /**
+    * Converts an SQLite3Result object to array. 
+    *
+    * @param SQLite3Result $sqliteResult
+    * @return array
+    */
+   protected function _asArray(SQLite3Result $sqliteResult): array
+   {
+      $resultArray = [];
+
+      while($row = $sqliteResult->fetchArray(SQLITE3_ASSOC)) {
+         $resultArray[] = $row;
+      }
+
+      return $resultArray;
    }
 }
