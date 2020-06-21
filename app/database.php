@@ -89,6 +89,23 @@ class DatabaseHandler
    }
 
    /**
+    * Adds a program to the database.
+    *
+    * @param array $program
+    * @return SQLite3Result|false
+    */
+    public function addProgram(array $program)
+    {
+      $title = $program['title'] ?? '';
+      $desc = $program['short_description'] ?? '';
+      $startTime = $program['start_datetime'] ?? null; 
+      $channel = $program['channel'] ?? null;
+      $ageLimit = $program['age_restriction'] ?? null;
+
+      return $this->_exec("INSERT INTO program (title, short_description, start_datetime, channel, age_restriction) VALUES ('${title}', '${desc}', '${startTime}', '${channel}', '${ageLimit}');");
+    }
+
+   /**
     * Adds an age restriction rule to the database.
     *
     * @param array $ageRestriction

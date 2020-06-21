@@ -55,3 +55,16 @@ function sendApiRequest(string $url, string $method = "GET") {
 
     return $curlResponse;
 }
+
+/**
+ * Wrapper for checking if value exists in multidimensional array.
+ * 
+ * @param string $needle
+ * @param array $haystack
+ * @param string $key
+ * 
+ * @return int|bool
+ */
+function arrayMultiSearch(string $needle, array $haystack, string $key) {
+    return array_search($needle, array_column($haystack, $key));
+}

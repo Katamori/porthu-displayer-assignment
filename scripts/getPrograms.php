@@ -10,6 +10,8 @@ $queryDate = "2020-06-20";
 $apiUrl = generateQueryURL($queryDate);
 
 // send request
+echo "Fetching API response...\n";
+
 $curlResponse = sendApiRequest($apiUrl);
 
 // in case of invalid response, end
@@ -27,20 +29,27 @@ $existingChannels = $dbHandler->getChannels();
 $existingAgeResctrictions = $dbHandler->getAgeRestrictions();
 
 // process response 1: add new channels and age restriction rules
+echo "Processing channels and age restrictions...\n";
+
 foreach ($jsonResponse['channels'] as $channel) {
     // if channel doesn't exist in DB, we add it
-    $existingKey = array_search($channel['name'], array_column($existingChannels, 'name'));
+    $existingKey = arrayMultiSearch($channel['name'], $existingChannels, 'name');
 
     if (!$existingKey && !is_numeric($existingKey)) {
         $isAdded = $dbHandler->addChannel($channel);
 
         echo "[" . ($isAdded ? "SUCCESS" : "FAILED") . "] Add channel: " . $channel['name']."\n";
+
+        // update existing list in case something was added
+        if ($isAdded) {
+            $existingChannels = $dbHandler->getChannels();
+        }
     }
 
     foreach ($channel['programs'] as $program) {
         // apply same for age restriction
         $ageRestrictionName = $program['restriction']['ageLimitName'];
-        $existingKey = array_search($ageRestrictionName, array_column($existingAgeResctrictions, 'name'));
+        $existingKey = arrayMultiSearch($ageRestrictionName, $existingAgeResctrictions, 'name');
 
         if (!$existingKey && !is_numeric($existingKey)) {
             $isAdded = $dbHandler->addAgeRestriction([
@@ -50,22 +59,45 @@ foreach ($jsonResponse['channels'] as $channel) {
             ]);
     
             echo "[" . ($isAdded ? "SUCCESS" : "FAILED") . "] Add age restriction: ${ageRestrictionName} \n";
+
+            // update existing list in case something was added
+            if ($isAdded) {
+                $existingAgeResctrictions = $dbHandler->getAgeRestrictions();
+            }
         }
     }
 }
 
 // process response 2: add programs
+echo "Processing programs...\n";
+
 foreach ($jsonResponse['channels'] as $channel) {
     foreach ($channel['programs'] as $program) {
-        $programs[] = [
+        $channelId = null;
+
+        if (is_numeric($existingKey = arrayMultiSearch($channel['name'], $existingChannels, 'name'))) {
+            $channelId = $existingChannels[$existingKey]['id'];
+        }
+
+
+        $ageLimitId = null;
+        $ageRestrictionName = $program['restriction']['ageLimitName'];
+
+        if (is_numeric($existingKey = arrayMultiSearch($ageRestrictionName, $existingAgeResctrictions, 'name'))) {
+            $ageLimitId = $existingAgeResctrictions[$existingKey]['id'];
+        }
+
+        $isAdded = $dbHandler->addProgram([
             'title'             => $program['title'],
             'short_description' => $program['short_description'],
             'start_datetime'    => $program['start_datetime'],
-            // todo: convert to existing channel and restriction ID
-            'channel'           => $channel['name'],
-            'age_restriction'   => $program['restriction']['ageLimitName'],
-        ];
-        //echo $program['title']."\n";
+            'channel'           => $channelId,
+            'age_restriction'   => $ageLimitId,
+        ]);
+
+        $t = $program['title'];
+        echo "[" . ($isAdded ? "SUCCESS" : "FAILED") . "] Add program: ${t} \n";
+
     }
 }
 
