@@ -11,11 +11,14 @@ Port.hu does not possess a documented programmable interface, but a "hidden" API
 ### Requirements
 
 * PHP 7.4
+    * `sqlite3` extension required
 * SQLite 3
 
 ### Install
 
 Create an SQLite database called `porthu`.
+
+Save the resulting `.sqlite3` file in the project's `database` folder, as the program is going to look for it there.
 
 Execute `./database/porthu.sql` on it - so that the initial data structure is created.
 
